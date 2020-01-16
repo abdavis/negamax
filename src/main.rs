@@ -1,8 +1,19 @@
 //use std::io;
+use std::time::{Duration,Instant};
 
 fn main() {
-    let root = Node::new2d(3);
-    println!("{:?}", root);
+    let mut root = Node::new2d(3);
+    println!("Building tree...");
+    let start = Instant::now();
+    root.build_tree();
+    let duration = start.elapsed();
+    println!("That took {:?}", duration);
+    println!("Counting Children...");
+    let start = Instant::now();
+    let count = root.count_tree();
+    let duration = start.elapsed();
+    println!("That took {:?}", duration);
+    println!("There are {} leaf nodes (possible games) in this tree.", count);
 }
 
 #[derive(Debug)]
@@ -12,6 +23,30 @@ struct Node<T>{
 
 }
 impl Node<Board2d>{
+//This method is ineffecient, meant for testing purposes
+    fn build_tree(&mut self){
+        match self.state.winner{
+            Some(_v)=> return,
+            None =>{
+                self.make_children();
+                for n in 0..self.children.len(){
+                    self.children[n].build_tree();
+                }
+            }
+        }
+    }
+
+    fn count_tree(&self)->i32{
+        if self.children.len() == 0{
+            return 1
+        }
+        let mut sum = 0;
+        for n in 0..self.children.len(){
+            sum += self.children[n].count_tree();
+        }
+        sum
+    }
+
     fn new2d(size: usize) -> Node<Board2d>{
         Node{
             state: Board2d::new(size),
@@ -30,6 +65,10 @@ impl Node<Board2d>{
                     )
                 }
             }
+        }
+
+        if self.children.len() == 0{ //if there are no children, then this node is a tie.
+            self.state.winner = Some(Space::Blank);
         }
     }
 }
