@@ -24,7 +24,8 @@ impl Node<Board2d>{
                 if let Space::Blank = self.state.board[x][y]{
                     self.children.push(
                         Node{
-
+                            state: self.state.new_child((x,y)),
+                            children: vec![]
                         }
                     )
                 }
@@ -58,10 +59,11 @@ impl Board2d{
             winner:None
         }
     }
-    fn next(&self, pos: (usize,usize))->Board2d{
+    fn new_child(&self, pos: (usize,usize))->Board2d{
         let mark = match self.last{
             None => Space::X, //if no pervious turn, choose x
-            Some(last) => match self.board[last.0][last.1]{//choose the oposite of the last turn
+            Some(last) => match self.board[last.0][last.1]{
+                //choose the oposite of the last turn
                 Space::X => Space::O,
                 Space::O => Space::X,
                 _=> panic!("Last turn is an invalid Space!")
@@ -74,17 +76,62 @@ impl Board2d{
             winner:None
         };
         result.board[pos.0][pos.1] = mark;
+        result.check_win();
         result
     }
     fn check_win(&mut self){
-        //check horizontal
-        let mut winner = true;
-        if(
-            for n in 0..self.size{
-                if self.board[self.last.0][self.last.1] != self.board[n][self.last.1]{winner = false; break;}
-            }
-        ){
 
+        if let Some((x,y)) = self.last{
+            if
+            {    //check horizontal
+                let mut result = true;
+                for n in 0..self.size{
+                    if self.board[n][y] != self.board[x][y]{
+                        result = false;
+                        break
+                    }
+                }
+                result
+            }||
+            {   //check vertical
+                let mut result = true;
+                for n in 0..self.size{
+                    if self.board[x][n] != self.board[x][y]{
+                        result = false;
+                        break
+                    }
+                }
+                result
+            }||
+            {   //check 1st diag
+                if x != y{false}
+                else{
+                    let mut result = true;
+                    for n in 0..self.size{
+                        if self.board[n][n] != self.board[1][1]{
+                            result = false;
+                            break
+                        }
+                    }
+                    result
+                }
+            }||
+            {   //check 2nd diagonal
+                if x != self.size -1 -y{false}
+                else{
+                    let mut result = true;
+                    for n in 0..self.size{
+                        if self.board[n][self.size -1 -n] != self.board[x][y]{
+                            result = false;
+                            break
+                        }
+                    }
+                    result
+                }
+            }
+            {
+                self.winner = Some(self.board[x][y]);
+            }
         }
     }
 }
@@ -108,7 +155,7 @@ impl Board3d{
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum Space{
     Blank,
     X,
