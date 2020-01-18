@@ -2,10 +2,10 @@
 use std::time::{Duration,Instant};
 
 fn main() {
-    let mut root = Node::new2d(3);
+    let mut root = Node::new2d(4);
     println!("Building tree...");
     let start = Instant::now();
-    root.build_tree();
+    root.build_tree(7);
     let duration = start.elapsed();
     println!("That took {:?}", duration);
     println!("Counting Children...");
@@ -24,13 +24,16 @@ struct Node<T>{
 }
 impl Node<Board2d>{
 //This method is ineffecient, meant for testing purposes
-    fn build_tree(&mut self){
+    fn build_tree(&mut self, depth:u32){
+        if depth == 0{
+            return
+        }
         match self.state.winner{
             Some(_v)=> return,
             None =>{
                 self.make_children();
                 for n in 0..self.children.len(){
-                    self.children[n].build_tree();
+                    self.children[n].build_tree(depth -1);
                 }
             }
         }
