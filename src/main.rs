@@ -3,8 +3,18 @@ use std::time::{Duration,Instant};
 use std::cmp::max;
 use std::i32::{MIN,MAX};
 fn main() {
-    let mut root = Node::new2d(3);
-    root.negamax(MIN,MAX,100);
+    let mut root = Node::new2d(4);
+    println!("Building tree...");
+    let start = Instant::now();
+    root.build_tree(7);
+    let duration = start.elapsed();
+    println!("That took {:?}", duration);
+    println!("Counting Children...");
+    let start = Instant::now();
+    let count = root.count_tree();
+    let duration = start.elapsed();
+    println!("That took {:?}", duration);
+    println!("There are {} leaf nodes (possible games) in this tree.", count);
 }
 
 #[derive(Debug)]
