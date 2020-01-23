@@ -2,73 +2,54 @@
 use std::time::{Duration,Instant};
 
 fn main() {
-    let mut root = Node::new2d(3);
-    println!("Building tree...");
-    let start = Instant::now();
-    root.build_tree();
-    let duration = start.elapsed();
-    println!("That took {:?}", duration);
-    println!("Counting Children...");
-    let start = Instant::now();
-    let count = root.count_tree();
-    let duration = start.elapsed();
-    println!("That took {:?}", duration);
-    println!("There are {} leaf nodes (possible games) in this tree.", count);
+    let root = Node::new2d(3);
 }
 
 #[derive(Debug)]
 struct Node<T>{
     state:T,
-    children: Vec<Node<T>>
+    children: Option<Vec<Node<T>>>
 
 }
 impl Node<Board2d>{
 //This method is ineffecient, meant for testing purposes
-    fn build_tree(&mut self){
-        match self.state.winner{
-            Some(_v)=> return,
-            None =>{
-                self.make_children();
-                for n in 0..self.children.len(){
-                    self.children[n].build_tree();
-                }
+    fn negamax(&mut self, alpha:i32, beta:i32, depth:u8)->i32{
+        if let Some(win) = self.state.winner {
+            match win{
+                Space::X | Space::O => return 1000,
+                _=> return 0
             }
         }
-    }
+        if depth == 0{return 0};
 
-    fn count_tree(&self)->i32{
-        if self.children.len() == 0{
-            return 1
-        }
-        let mut sum = 0;
-        for n in 0..self.children.len(){
-            sum += self.children[n].count_tree();
-        }
-        sum
     }
 
     fn new2d(size: usize) -> Node<Board2d>{
         Node{
             state: Board2d::new(size),
-            children: vec![]
+            children: None
         }
     }
+    //Makes all of the Children of a node
     fn make_children(&mut self){
-         for x in 0..self.state.size{
-            for y in 0..self.state.size{
-                if let Space::Blank = self.state.board[x][y]{
-                    self.children.push(
-                        Node{
-                            state: self.state.new_child((x,y)),
-                            children: vec![]
-                        }
-                    )
+        if let None = self.children {
+            let children = vec![];
+             for x in 0..self.state.size{
+                for y in 0..self.state.size{
+                    if let Space::Blank = self.state.board[x][y]{
+                        children.push(
+                            Node{
+                                state: self.state.new_child((x,y)),
+                                children: None
+                            }
+                        )
+                    }
                 }
             }
-        }
-
-        if self.children.len() == 0{ //if there are no children, then this node is a tie.
-            self.state.winner = Some(Space::Blank);
+            //Sets a draw if there are no children
+            if children.len() == 0 {self.state.winner = Some(Space::Blank)}
+            //otherwise, put the vector in self.children
+            else {self.children = Some(children)};
         }
     }
 }
@@ -76,7 +57,7 @@ impl Node<Board3d>{
     fn new3d(size: usize)-> Node<Board3d>{
         Node{
             state: Board3d::new(size),
-            children: vec![]
+            children: None
         }
     }
 }
