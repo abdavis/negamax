@@ -1,8 +1,10 @@
 //use std::io;
 use std::time::{Duration,Instant};
-
+use std::cmp::max;
+use std::i32::{MIN,MAX};
 fn main() {
-    let root = Node::new2d(3);
+    let mut root = Node::new2d(3);
+    root.negamax(MIN,MAX,100);
 }
 
 #[derive(Debug)]
@@ -13,15 +15,33 @@ struct Node<T>{
 }
 impl Node<Board2d>{
 //This method is ineffecient, meant for testing purposes
-    fn negamax(&mut self, alpha:i32, beta:i32, depth:u8)->i32{
+    fn negamax(&mut self, mut alpha:i32, mut beta:i32, depth:u8)->i32{
+        //Base Cases for recursion
+        if depth == 0{return 0};
         if let Some(win) = self.state.winner {
             match win{
                 Space::X | Space::O => return 1000,
                 _=> return 0
             }
         }
-        if depth == 0{return 0};
-
+        match &mut self.children{
+            //Test if we need to make Children
+            None=>{
+                self.make_children();
+                //call negamax on self after making children
+                return self.negamax(alpha, beta, depth);
+            },
+            //main code for negamax algorithm
+            Some(children)=>{
+                let mut value = MIN;
+                for child in children{
+                    value = max(value, -child.negamax(-beta, -alpha, depth-1));
+                    alpha = max(alpha, value);
+                    if alpha >= beta {break};
+                }
+                value
+            }
+        }
     }
 
     fn new2d(size: usize) -> Node<Board2d>{
@@ -33,7 +53,7 @@ impl Node<Board2d>{
     //Makes all of the Children of a node
     fn make_children(&mut self){
         if let None = self.children {
-            let children = vec![];
+            let mut children = vec![];
              for x in 0..self.state.size{
                 for y in 0..self.state.size{
                     if let Space::Blank = self.state.board[x][y]{
