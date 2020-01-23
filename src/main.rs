@@ -6,7 +6,7 @@ fn main() {
     let mut root = Node::new2d(4);
     println!("Building tree...");
     let start = Instant::now();
-    root.build_tree(7);
+    root.negamax(MIN+1,MAX-1,10);
     let duration = start.elapsed();
     println!("That took {:?}", duration);
     println!("Counting Children...");
@@ -50,6 +50,18 @@ impl Node<Board2d>{
                     if alpha >= beta {break};
                 }
                 value
+            }
+        }
+    }
+    fn count_tree(&self)->i32{
+        match &self.children{
+            None=>1,
+            Some(children)=>{
+                let mut sum = 0;
+                for child in children{
+                    sum += child.count_tree();
+                }
+                sum
             }
         }
     }
