@@ -3,7 +3,7 @@ use std::time::{Duration,Instant};
 use std::cmp::max;
 use std::i32::{MIN,MAX};
 fn main() {
-    let mut root = Node::new2d(4);
+    let mut root = Node::new2d(3);
     println!("Building tree...");
     let start = Instant::now();
     root.negamax(MIN+1,MAX-1,10);
@@ -14,7 +14,7 @@ fn main() {
     let count = root.count_tree();
     let duration = start.elapsed();
     println!("That took {:?}", duration);
-    println!("There are {} leaf nodes (possible games) in this tree.", count);
+    println!("There are {} nodes saved in this tree.", count);
 }
 
 #[derive(Debug)]
@@ -57,7 +57,7 @@ impl Node<Board2d>{
         match &self.children{
             None=>1,
             Some(children)=>{
-                let mut sum = 0;
+                let mut sum = 1;
                 for child in children{
                     sum += child.count_tree();
                 }
