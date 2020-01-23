@@ -25,7 +25,7 @@ struct Node<T>{
 }
 impl Node<Board2d>{
 //This method is ineffecient, meant for testing purposes
-    fn negamax(&mut self, mut alpha:i32, mut beta:i32, depth:u8)->i32{
+    fn negamax(&mut self, mut alpha:i32, beta:i32, depth:u8)->i32{
         //Base Cases for recursion
         if depth == 0{return 0};
         if let Some(win) = self.state.winner {
