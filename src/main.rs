@@ -3,10 +3,10 @@ use std::time::{Duration,Instant};
 use std::cmp::max;
 use std::i32::{MIN,MAX};
 fn main() {
-    let mut root = Node::new2d(3);
+    let mut root = Node::new2d(4);
     println!("Building tree...");
     let start = Instant::now();
-    root.negamax(MIN+1,MAX-1,10);
+    root.negamax(MIN+1,MAX-1, 12);
     let duration = start.elapsed();
     println!("That took {:?}", duration);
     println!("Counting Children...");
@@ -15,6 +15,16 @@ fn main() {
     let duration = start.elapsed();
     println!("That took {:?}", duration);
     println!("There are {} nodes saved in this tree.", count);
+    let mut root2 = Node::new2d(4);
+    println!("Simulating iterative deepening...");
+    let start = Instant::now();
+    for n in 1..13{
+        root2.negamax(MIN+1, MAX-1, n);
+    }
+    let duration = start.elapsed();
+    println!("That took {:?}", duration);
+    let count2 = root2.count_tree();
+    println!("there are {} Nodes, for a difference of {}.",count2, count - count2);
 }
 
 #[derive(Debug)]
@@ -37,20 +47,27 @@ impl Node<Board2d>{
         if depth == 0{return 0}
 
         match &mut self.children{
-            // Test if we need to make Children
+            // Test if we need to make children
             None=>{
                 self.make_children();
                 // Call negamax on self after making children
-                return self.negamax(alpha, beta, depth);
+                self.negamax(alpha, beta, depth)
             },
             // Main code for negamax algorithm
             Some(children)=>{
                 let mut value = MIN;
-                for child in children{
-                    value = max(value, -child.negamax(-beta, -alpha, depth-1));
+                let mut best_index = 0;
+                for (i, child) in children.iter_mut().enumerate(){
+                    let temp_value = -child.negamax(-beta, -alpha, depth - 1);
+                    if temp_value > value{
+                        best_index = i;
+                        value = temp_value;
+                    }
                     alpha = max(alpha, value);
                     if alpha >= beta {break};
                 }
+                // Put the best Value first in the vec of children. (improves alpha beta pruning)
+                children.swap(0, best_index);
                 value
             }
         }
