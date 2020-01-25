@@ -90,9 +90,9 @@ impl Node<Board2d>{
                     }
                 }
             }
-            //Sets a draw if there are no children
-            if children.len() == 0 {self.state.winner = Some(Space::Blank)}
-            //otherwise, put the vector in self.children
+            // Sets a draw if there are no children
+            if children.is_empty() {self.state.winner = Some(Space::Blank)}
+            // Otherwise, put the vector in self.children
             else {self.children = Some(children)};
         }
     }
