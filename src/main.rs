@@ -33,6 +33,9 @@ impl Node<Board2d>{
                 _=> return 0
             }
         }
+
+        if depth == 0{return 0}
+
         match &mut self.children{
             // Test if we need to make Children
             None=>{
