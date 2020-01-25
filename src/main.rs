@@ -23,11 +23,10 @@ struct Node<T>{
     children: Option<Vec<Node<T>>>
 
 }
+
 impl Node<Board2d>{
-//This method is ineffecient, meant for testing purposes
     fn negamax(&mut self, mut alpha:i32, beta:i32, depth:u8)->i32{
-        //Base Cases for recursion
-        if depth == 0{return 0};
+        // Base Cases for recursion
         if let Some(win) = self.state.winner {
             match win{
                 Space::X | Space::O => return 1000,
@@ -35,13 +34,13 @@ impl Node<Board2d>{
             }
         }
         match &mut self.children{
-            //Test if we need to make Children
+            // Test if we need to make Children
             None=>{
                 self.make_children();
-                //call negamax on self after making children
+                // Call negamax on self after making children
                 return self.negamax(alpha, beta, depth);
             },
-            //main code for negamax algorithm
+            // Main code for negamax algorithm
             Some(children)=>{
                 let mut value = MIN;
                 for child in children{
@@ -72,7 +71,7 @@ impl Node<Board2d>{
             children: None
         }
     }
-    //Makes all of the Children of a node
+    // Makes all of the Children of a node
     fn make_children(&mut self){
         if let None = self.children {
             let mut children = vec![];
@@ -123,9 +122,9 @@ impl Board2d{
     }
     fn new_child(&self, pos: (usize,usize))->Board2d{
         let mark = match self.last{
-            None => Space::X, //if no pervious turn, choose x
+            None => Space::X, // If no pervious turn, choose x
             Some(last) => match self.board[last.0][last.1]{
-                //choose the oposite of the last turn
+                // Choose the oposite of the last turn
                 Space::X => Space::O,
                 Space::O => Space::X,
                 _=> panic!("Last turn is an invalid Space!")
@@ -145,7 +144,7 @@ impl Board2d{
 
         if let Some((x,y)) = self.last{
             if
-            {    //check horizontal
+            {    // Check horizontal
                 let mut result = true;
                 for n in 0..self.size{
                     if self.board[n][y] != self.board[x][y]{
@@ -155,7 +154,7 @@ impl Board2d{
                 }
                 result
             }||
-            {   //check vertical
+            {   // Check vertical
                 let mut result = true;
                 for n in 0..self.size{
                     if self.board[x][n] != self.board[x][y]{
@@ -165,7 +164,7 @@ impl Board2d{
                 }
                 result
             }||
-            {   //check 1st diag
+            {   // Check 1st diag
                 if x != y{false}
                 else{
                     let mut result = true;
@@ -178,7 +177,7 @@ impl Board2d{
                     result
                 }
             }||
-            {   //check 2nd diagonal
+            {   // Check 2nd diagonal
                 if x != self.size -1 -y{false}
                 else{
                     let mut result = true;
