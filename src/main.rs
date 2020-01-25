@@ -1,20 +1,15 @@
-//use std::io;
+//use std::io
+// Benchmark to beat: 4.022251ms
 use std::time::{Duration,Instant};
 use std::cmp::max;
 use std::i32::{MIN,MAX};
 fn main() {
-    let mut root = Node::new2d(3);
+    let root = Board2d::new(4);
     println!("Building tree...");
     let start = Instant::now();
-    root.negamax(MIN+1,MAX-1,10);
+    root.negamax(MIN+1,MAX-1,100);
     let duration = start.elapsed();
     println!("That took {:?}", duration);
-    println!("Counting Children...");
-    let start = Instant::now();
-    let count = root.count_tree();
-    let duration = start.elapsed();
-    println!("That took {:?}", duration);
-    println!("There are {} nodes saved in this tree.", count);
 }
 
 #[derive(Debug)]
@@ -25,48 +20,6 @@ struct Node<T>{
 }
 
 impl Node<Board2d>{
-    fn negamax(&mut self, mut alpha:i32, beta:i32, depth:u8)->i32{
-        // Base Cases for recursion
-        if let Some(win) = self.state.winner {
-            match win{
-                Space::X | Space::O => return 1000,
-                _=> return 0
-            }
-        }
-
-        if depth == 0{return 0}
-
-        match &mut self.children{
-            // Test if we need to make Children
-            None=>{
-                self.make_children();
-                // Call negamax on self after making children
-                return self.negamax(alpha, beta, depth);
-            },
-            // Main code for negamax algorithm
-            Some(children)=>{
-                let mut value = MIN;
-                for child in children{
-                    value = max(value, -child.negamax(-beta, -alpha, depth-1));
-                    alpha = max(alpha, value);
-                    if alpha >= beta {break};
-                }
-                value
-            }
-        }
-    }
-    fn count_tree(&self)->i32{
-        match &self.children{
-            None=>1,
-            Some(children)=>{
-                let mut sum = 1;
-                for child in children{
-                    sum += child.count_tree();
-                }
-                sum
-            }
-        }
-    }
 
     fn new2d(size: usize) -> Node<Board2d>{
         Node{
@@ -115,6 +68,29 @@ struct Board2d{
     winner: Option<Space>
 }
 impl Board2d{
+    fn negamax(&self, mut alpha:i32, beta:i32, depth:u8) -> i32{
+        if let Some(winner) = self.winner{
+            match winner{
+                Space::X | Space::O => 1000,
+                _=> 0
+            }
+        } else if depth == 0 {0}
+        else{
+            let mut value = MIN;
+            'outer: for y in 0..self.size{
+                for x in 0..self.size{
+                    if self.board[x][y] == Space::Blank{
+                        value = max(value, -self.new_child((x,y)).negamax(-beta,-alpha,depth-1));
+                        alpha = max(alpha,value);
+                        if alpha >= beta{break 'outer};
+                    }
+                }
+            }
+            if value == MIN {0}
+            else {value}
+        }
+    }
+
     fn new(size: usize) -> Board2d{
         Board2d{
             board:[[Space::Blank; 4];4],
