@@ -1,52 +1,86 @@
 //use std::io
-// Benchmark to beat: 4.022251ms
-use std::time::{Duration,Instant};
+//use std::time::{Duration,Instant};
 use std::cmp::max;
 use std::i32::{MIN,MAX};
 fn main() {
-    let root = Board2d::new(4);
-    println!("Building tree...");
-    let start = Instant::now();
-    root.negamax(MIN+1,MAX-1,100);
-    let duration = start.elapsed();
-    println!("That took {:?}", duration);
+    let mut root = Node::new2d(3);
+    while match &root.children{Some(_v)=>true,None=>false} {
+        root.calc_scores(20);
+        root.print_scores();
+        root = root.get_child();
+        root.make_children();
+        root.state.print();
+    }
+    println!("{:?}", root.state.winner);
 }
 
 #[derive(Debug)]
 struct Node<T>{
     state:T,
-    children: Option<Vec<Node<T>>>
+    children: Option<Vec<(T, i32)>>
 
 }
 
 impl Node<Board2d>{
+    // This function consumes self and returns a new child
+    fn get_child(self) -> Self{
+        if let Some(mut children) = self.children{
+            if let Some(child) = children.pop(){
+                Node{
+                    state: child.0,
+                    children:None
+                }
+            }else{panic!()}
+        }else{panic!()}
+    }
+    fn calc_scores(&mut self, depth:u8){
+        if let Some(children) = &mut self.children{
+            for child in children.iter_mut(){
+                child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth);
+            }
+            children.sort_unstable_by_key(|a| a.1);
+        }
+    }
+
+    fn print_scores(&self){
+        if let Some(children) = &self.children{
+            let mut out = String::new();
+            for child in children{
+                out.push_str(&child.1.to_string());
+                out.push_str(", ");
+            }
+            println!("{}", out);
+        }
+    }
 
     fn new2d(size: usize) -> Node<Board2d>{
-        Node{
+        let mut result = Node{
             state: Board2d::new(size),
             children: None
-        }
+        };
+        result.make_children();
+        result
     }
     // Makes all of the Children of a node
     fn make_children(&mut self){
-        if let None = self.children {
-            let mut children = vec![];
-             for x in 0..self.state.size{
-                for y in 0..self.state.size{
-                    if let Space::Blank = self.state.board[x][y]{
-                        children.push(
-                            Node{
-                                state: self.state.new_child((x,y)),
-                                children: None
-                            }
-                        )
+        // But only if the board is not in an ending state
+        if let None = self.state.winner{
+            if let None = self.children {
+                let mut children = vec![];
+                 for y in 0..self.state.size{
+                    for x in 0..self.state.size{
+                        if let Space::Blank = self.state.board[x][y]{
+                            children.push(
+                                (self.state.new_child((x,y)),0)
+                            )
+                        }
                     }
                 }
+                // Sets a draw if there are no children
+                if children.is_empty() {self.state.winner = Some(Space::Blank)}
+                // Otherwise, put the vector in self.children
+                else {self.children = Some(children)};
             }
-            // Sets a draw if there are no children
-            if children.is_empty() {self.state.winner = Some(Space::Blank)}
-            // Otherwise, put the vector in self.children
-            else {self.children = Some(children)};
         }
     }
 }
@@ -68,6 +102,31 @@ struct Board2d{
     winner: Option<Space>
 }
 impl Board2d{
+    fn print(&self){
+        let mut out = String::new();
+        out.push('+');
+        for _n in 0..self.size{
+            out.push('-');
+        }
+        out.push_str("+\n");
+        for y in 0..self.size{
+            out.push('|');
+            for x in 0..self.size{
+                match self.board[x][y]{
+                    Space::X => out.push('X'),
+                    Space::O => out.push('O'),
+                    _=> out.push(' ')
+                }
+            }
+            out.push_str("|\n");
+        }
+        out.push('+');
+        for _n in 0..self.size{
+            out.push('-');
+        }
+        out.push_str("+\n");
+        print!("{}",out);
+    }
     fn negamax(&self, mut alpha:i32, beta:i32, depth:u8) -> i32{
         // Base cases for recursion
         if let Some(winner) = self.winner{
@@ -125,8 +184,7 @@ impl Board2d{
     fn check_win(&mut self){
 
         if let Some((x,y)) = self.last{
-            if
-            {    // Check horizontal
+            if{    // Check horizontal
                 let mut result = true;
                 for n in 0..self.size{
                     if self.board[n][y] != self.board[x][y]{
@@ -151,7 +209,7 @@ impl Board2d{
                 else{
                     let mut result = true;
                     for n in 0..self.size{
-                        if self.board[n][n] != self.board[1][1]{
+                        if self.board[n][n] != self.board[x][y]{
                             result = false;
                             break
                         }
@@ -172,6 +230,7 @@ impl Board2d{
                     result
                 }
             }
+            // End of if conditions, expression follows
             {
                 self.winner = Some(self.board[x][y]);
             }
