@@ -60,7 +60,7 @@ impl Node<Board3d>{
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Board2d{
     board:[[Space; 4];4],
     last:Option<(usize,usize)>,
@@ -69,12 +69,14 @@ struct Board2d{
 }
 impl Board2d{
     fn negamax(&self, mut alpha:i32, beta:i32, depth:u8) -> i32{
+        // Base cases for recursion
         if let Some(winner) = self.winner{
             match winner{
-                Space::X | Space::O => 1000,
+                Space::X | Space::O => -100,
                 _=> 0
             }
         } else if depth == 0 {0}
+        // Main part of negamax function
         else{
             let mut value = MIN;
             'outer: for y in 0..self.size{
@@ -86,6 +88,7 @@ impl Board2d{
                     }
                 }
             }
+            // Returns 0 if there are no child nodes and there is no winner
             if value == MIN {0}
             else {value}
         }
