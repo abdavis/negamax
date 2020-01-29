@@ -6,7 +6,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 fn main() {
     let start = Instant::now();
-    let mut root = Node::new2d(3);
+    let mut root = Node::new2d(4);
     while match &root.children {
         Some(_v) => true,
         None => false,
@@ -49,9 +49,32 @@ impl Node<Board2d> {
     }
     fn calc_scores(&mut self, depth: u8) {
         if let Some(children) = &mut self.children {
-            for child in children.iter_mut() {
-                child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth);
+            // Create a channel and mutex here so that threads can communicate
+            let (tx, rx) = mpsc::channel();
+            let mutex = Arc::new(Mutex::new(children.clone()));
+            for _n in 0..5 {
+                let tx = tx.clone();
+                let mutex = mutex.clone();
+                thread::spawn(move || loop {
+                    let mut children = mutex.lock().unwrap();
+                    let child = children.pop();
+                    // Drop children here to let other threads lock on mutex
+                    drop(children);
+                    match child {
+                        None => break,
+                        Some(mut child) => {
+                            child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth);
+                            tx.send(child).unwrap();
+                        }
+                    }
+                });
             }
+            drop(tx);
+            let mut new_children = vec![];
+            for message in rx {
+                new_children.push(message);
+            }
+            *children = new_children;
             children.sort_unstable_by_key(|a| a.1);
         }
     }
