@@ -1,20 +1,28 @@
 //use std::io
-//use std::time::{Duration,Instant};
 use std::cmp::max;
 use std::i32::{MAX, MIN};
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 fn main() {
+    let start = Instant::now();
     let mut root = Node::new2d(3);
     while match &root.children {
         Some(_v) => true,
         None => false,
     } {
+        let start = Instant::now();
         root.calc_scores(20);
+        let time = start.elapsed();
         root.print_scores();
+        println!("{:?}", time);
         root = root.get_child();
         root.make_children();
         root.state.print();
     }
     println!("{:?}", root.state.winner);
+    let end = start.elapsed();
+    println!("Total Time: {:?}", end);
 }
 
 #[derive(Debug)]
