@@ -107,7 +107,7 @@ impl Node<Board2d> {
                 for y in 0..self.state.size {
                     for x in 0..self.state.size {
                         if let Space::Blank = self.state.board[x][y] {
-                            children.push((self.state.new_child((x, y)), 0))
+                            children.push((self.state.new_child((x, y)), 0));
                         }
                     }
                 }
