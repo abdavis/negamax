@@ -4,6 +4,8 @@ use std::i32::{MAX, MIN};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+
+const num_threads:u8 = 4;
 fn main() {
     let start = Instant::now();
     let mut root = Node::new2d(4);
@@ -52,7 +54,7 @@ impl Node<Board2d> {
             // Create a channel and mutex here so that threads can communicate
             let (tx, rx) = mpsc::channel();
             let mutex = Arc::new(Mutex::new(children.clone()));
-            for _n in 0..5 {
+            for _n in 0..num_threads {
                 let tx = tx.clone();
                 let mutex = mutex.clone();
                 thread::spawn(move || loop {
