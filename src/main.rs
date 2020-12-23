@@ -3,7 +3,7 @@ use std::cmp::{max,min};
 use std::i32::{MAX, MIN};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 const NUM_THREADS:usize = 4;
 fn main() {
@@ -18,12 +18,17 @@ fn main() {
         root = root.get_child();
         root.state.print();
     }
-    println!("{:?}", root.state.winner);
+    println!("{}", match root.state.winner{
+        WinState::X => "X Won!",
+        WinState::O => "O Won!",
+        WinState::Draw => "Cat!",
+        WinState::None => "whoops, I don't know who won!"
+});
     let end = start.elapsed();
     println!("Total Time: {:?}", end);
 }
 
-#[derive(Debug)]
+
 struct Node<T> {
     state: T,
     children: Vec<(T, i32)>,
@@ -123,7 +128,7 @@ impl Node<Board3d> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 struct Board2d {
     board: [[Space; 4]; 4],
     last: Option<(usize, usize)>,
@@ -282,7 +287,7 @@ impl Board2d {
     }
 }
 
-#[derive(Debug)]
+
 struct Board3d {
     board: [[[Space; 4]; 4]; 4],
     last: Option<(usize, usize, usize)>,
@@ -300,13 +305,13 @@ impl Board3d {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum Space {
     Blank,
     X,
     O,
 }
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone)]
 enum WinState{
     None,
     X,
