@@ -5,7 +5,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-const num_threads:usize = 4;
+const NUM_THREADS:usize = 4;
 fn main() {
     let start = Instant::now();
     let mut root = Node::new2d(4);
@@ -47,7 +47,7 @@ impl Node<Board2d> {
         // Create a channel and mutex here so that threads can communicate
         let (tx, rx) = mpsc::channel();
         let mutex = Arc::new(Mutex::new(self.children.clone()));
-        for _n in 0..min(num_threads, self.children.len()) {
+        for _n in 0..min(NUM_THREADS, self.children.len()) {
             let tx = tx.clone();
             let mutex = mutex.clone();
             thread::spawn(move || loop {
