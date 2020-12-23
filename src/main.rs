@@ -9,14 +9,13 @@ const NUM_THREADS:usize = 4;
 fn main() {
     let start = Instant::now();
     let mut root = Node::new2d(4);
-    while match root.state.winner{ None => true, _x => false}{
+    while match root.state.winner{ WinState::None => true, _ => false}{
         let start = Instant::now();
         root.calc_scores(20);
         let time = start.elapsed();
         root.print_scores();
         println!("{:?}", time);
         root = root.get_child();
-        root.make_children();
         root.state.print();
     }
     println!("{:?}", root.state.winner);
@@ -34,10 +33,12 @@ impl Node<Board2d> {
     // This function consumes self and returns a new child
     fn get_child(mut self) -> Self {
         if let Some(child) = self.children.pop() {
-            Node {
+            let mut new_node = Node {
                 state: child.0,
                 children: vec![]
-            }
+            };
+            new_node.make_children();
+            new_node
         } else {
             panic!()
         }
@@ -93,7 +94,7 @@ impl Node<Board2d> {
     // Makes all of the Children of a node
     fn make_children(&mut self) {
         // But only if the board is not in an ending state
-        if let None = self.state.winner {
+        if let WinState::None = self.state.winner {
             let mut children = vec![];
             for y in 0..self.state.size {
                 for x in 0..self.state.size {
@@ -104,7 +105,7 @@ impl Node<Board2d> {
             }
             // Sets a draw if there are no children
             if children.is_empty() {
-                self.state.winner = Some(Space::Blank)
+                self.state.winner = WinState::Draw
             }
             // Otherwise, put the vector in self.children
             else {
@@ -127,7 +128,7 @@ struct Board2d {
     board: [[Space; 4]; 4],
     last: Option<(usize, usize)>,
     size: usize,
-    winner: Option<Space>,
+    winner: WinState,
 }
 impl Board2d {
     fn print(&self) {
@@ -156,37 +157,36 @@ impl Board2d {
         print!("{}", out);
     }
     fn negamax(&self, mut alpha: i32, beta: i32, depth: u8) -> i32 {
-        // Base cases for recursion
-        if let Some(winner) = self.winner {
-            match winner {
-                Space::X | Space::O => -100,
-                _ => 0,
-            }
-        } else if depth == 0 {
-            0
-        }
-        // Main part of negamax function
-        else {
-            let mut value = MIN;
-            'outer: for y in 0..self.size {
-                for x in 0..self.size {
-                    if self.board[x][y] == Space::Blank {
-                        value = max(
-                            value,
-                            -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1),
-                        );
-                        alpha = max(alpha, value);
-                        if alpha >= beta {
-                            break 'outer;
-                        };
+        match self.winner{
+            // Base cases for recursion
+            WinState::X | WinState::O => -100,
+            WinState::Draw => 0,
+            WinState::None =>{
+                if depth == 0 { 0 }
+                // Main part of negamax function
+                else {
+                    let mut value = MIN;
+                    'outer: for y in 0..self.size {
+                        for x in 0..self.size {
+                            if self.board[x][y] == Space::Blank {
+                                value = max(
+                                    value,
+                                    -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1),
+                                );
+                                alpha = max(alpha, value);
+                                if alpha >= beta {
+                                    break 'outer;
+                                };
+                            }
+                        }
+                    }
+                    // Returns 0 if there are no child nodes and there is no winner
+                    if value == MIN {
+                        0
+                    } else {
+                        value
                     }
                 }
-            }
-            // Returns 0 if there are no child nodes and there is no winner
-            if value == MIN {
-                0
-            } else {
-                value
             }
         }
     }
@@ -196,7 +196,7 @@ impl Board2d {
             board: [[Space::Blank; 4]; 4],
             last: None,
             size,
-            winner: None,
+            winner: WinState::None,
         }
     }
     fn new_child(&self, pos: (usize, usize)) -> Board2d {
@@ -213,7 +213,7 @@ impl Board2d {
             last: Some(pos),
             board: self.board,
             size: self.size,
-            winner: None,
+            winner: WinState::None,
         };
         result.board[pos.0][pos.1] = mark;
         result.check_win();
@@ -272,7 +272,11 @@ impl Board2d {
             }
             // End of if conditions, expression follows
             {
-                self.winner = Some(self.board[x][y]);
+                self.winner = match self.board[x][y]{
+                    Space::X => WinState::X,
+                    Space::O => WinState::O,
+                    _ => panic!("Invalid Board state")
+                };
             }
         }
     }
