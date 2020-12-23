@@ -16,6 +16,7 @@ fn main() {
         root.print_scores();
         println!("{:?}", time);
         root = root.get_child();
+        println!("Turn {}:", root.ply);
         root.state.print();
     }
     println!("{}", match root.state.winner{
@@ -32,6 +33,7 @@ fn main() {
 struct Node<T> {
     state: T,
     children: Vec<(T, i32)>,
+    ply: u8
 }
 
 impl Node<Board2d> {
@@ -40,7 +42,8 @@ impl Node<Board2d> {
         if let Some(child) = self.children.pop() {
             let mut new_node = Node {
                 state: child.0,
-                children: vec![]
+                children: vec![],
+                ply: self.ply + 1
             };
             new_node.make_children();
             new_node
@@ -92,6 +95,7 @@ impl Node<Board2d> {
         let mut result = Node {
             state: Board2d::new(size),
             children: vec![],
+            ply: 0
         };
         result.make_children();
         result
@@ -124,6 +128,7 @@ impl Node<Board3d> {
         Node {
             state: Board3d::new(size),
             children: vec![],
+            ply: 0
         }
     }
 }
