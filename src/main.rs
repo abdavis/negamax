@@ -1,22 +1,20 @@
 //use std::io
-use std::cmp::{max,min};
+use std::cmp::{max};
 use std::i32::{MAX, MIN};
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
 use std::time::{Instant};
-
-const NUM_THREADS:usize = 4;
+use std::collections::HashMap;
+const MAP_CUTOFF:usize = 4;
 fn main() {
     let start = Instant::now();
     let mut root = Node::new2d(4);
     while match root.state.winner{ WinState::None => true, _ => false}{
         let start = Instant::now();
-        root.calc_scores(20);
+        root.calc_scores(21);
         let time = start.elapsed();
         root.print_scores();
         println!("{:?}", time);
+        println!("States in Hash Map: {}", root.map.len());
         root = root.get_child();
-        println!("Turn {}:", root.ply);
         root.state.print();
     }
     println!("{}", match root.state.winner{
@@ -30,20 +28,21 @@ fn main() {
 }
 
 
-struct Node<T> {
+
+struct Node<T,S> {
     state: T,
     children: Vec<(T, i32)>,
-    ply: u8
+    map: HashMap<S, i32>
 }
 
-impl Node<Board2d> {
+impl Node<Board2d, [[Space; 5]; 5]> {
     // This function consumes self and returns a new child
     fn get_child(mut self) -> Self {
         if let Some(child) = self.children.pop() {
             let mut new_node = Node {
                 state: child.0,
                 children: vec![],
-                ply: self.ply + 1
+                map: HashMap::new()
             };
             new_node.make_children();
             new_node
@@ -52,33 +51,9 @@ impl Node<Board2d> {
         }
     }
     fn calc_scores(&mut self, depth: u8) {
-        
-        // Create a channel and mutex here so that threads can communicate
-        let (tx, rx) = mpsc::channel();
-        let mutex = Arc::new(Mutex::new(self.children.clone()));
-        for _n in 0..min(NUM_THREADS, self.children.len()) {
-            let tx = tx.clone();
-            let mutex = mutex.clone();
-            thread::spawn(move || loop {
-                let mut children = mutex.lock().unwrap();
-                let child = children.pop();
-                // Drop children here to let other threads lock on mutex
-                drop(children);
-                match child {
-                    None => break,
-                    Some(mut child) => {
-                        child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth);
-                        tx.send(child).unwrap();
-                    }
-                }
-            });
+        for mut child in &mut self.children{
+            child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth, &mut self.map);
         }
-        drop(tx);
-        let mut new_children = vec![];
-        for message in rx {
-            new_children.push(message);
-        }
-        self.children = new_children;
         self.children.sort_unstable_by_key(|a| a.1);
     }
 
@@ -91,11 +66,11 @@ impl Node<Board2d> {
         println!("{}", out);
     }
 
-    fn new2d(size: usize) -> Node<Board2d> {
+    fn new2d(size: usize) -> Node<Board2d, [[Space; 5]; 5]> {
         let mut result = Node {
             state: Board2d::new(size),
             children: vec![],
-            ply: 0
+            map: HashMap::new()
         };
         result.make_children();
         result
@@ -123,19 +98,19 @@ impl Node<Board2d> {
         }
     }
 }
-impl Node<Board3d> {
-    fn new3d(size: usize) -> Node<Board3d> {
+impl Node<Board3d, [[[Space; 4]; 4]; 4]> {
+    fn new3d(size: usize) -> Node<Board3d, [[[Space; 4]; 4]; 4]> {
         Node {
             state: Board3d::new(size),
             children: vec![],
-            ply: 0
+            map: HashMap::new()
         }
     }
 }
 
 #[derive(Copy, Clone)]
 struct Board2d {
-    board: [[Space; 4]; 4],
+    board: [[Space; 5]; 5],
     last: Option<(usize, usize)>,
     size: usize,
     winner: WinState,
@@ -166,10 +141,16 @@ impl Board2d {
         out.push_str("+\n");
         print!("{}", out);
     }
-    fn negamax(&self, mut alpha: i32, beta: i32, depth: u8) -> i32 {
+    fn negamax(&self, mut alpha: i32, beta: i32, depth: u8, map:&mut HashMap<[[Space; 5]; 5], i32>)
+    -> i32 {
+        // Check if we have already done the work for this node
+        match map.get(&self.board) {
+            Some(score) => return *score,
+            None => ()
+        }
         match self.winner{
             // Base cases for recursion
-            WinState::X | WinState::O => -100,
+            WinState::X | WinState::O => -100 + i32::from(depth),
             WinState::Draw => 0,
             WinState::None =>{
                 if depth == 0 { 0 }
@@ -181,7 +162,7 @@ impl Board2d {
                             if self.board[x][y] == Space::Blank {
                                 value = max(
                                     value,
-                                    -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1),
+                                    -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1, map)
                                 );
                                 alpha = max(alpha, value);
                                 if alpha >= beta {
@@ -192,10 +173,10 @@ impl Board2d {
                     }
                     // Returns 0 if there are no child nodes and there is no winner
                     if value == MIN {
-                        0
-                    } else {
-                        value
+                        value=0;
                     }
+                    map.insert(self.board, value);
+                    value
                 }
             }
         }
@@ -203,7 +184,7 @@ impl Board2d {
 
     fn new(size: usize) -> Board2d {
         Board2d {
-            board: [[Space::Blank; 4]; 4],
+            board: [[Space::Blank; 5]; 5],
             last: None,
             size,
             winner: WinState::None,
@@ -310,7 +291,7 @@ impl Board3d {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Space {
     Blank,
     X,
