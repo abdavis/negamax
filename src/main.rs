@@ -3,18 +3,23 @@ use std::cmp::{max};
 use std::i32::{MAX, MIN};
 use std::time::{Instant};
 use std::collections::HashMap;
+
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+
 const MAP_CUTOFF:usize = 4;
 fn main() {
     let start = Instant::now();
     let mut root = Node::new2d(4);
     while match root.state.winner{ WinState::None => true, _ => false}{
         let start = Instant::now();
-        root.calc_scores(21);
+        root.calc_scores(16);
         let time = start.elapsed();
         root.print_scores();
         println!("{:?}", time);
         println!("States in Hash Map: {}", root.map.len());
         root = root.get_child();
+        println!("Last Move: {:?}", root.state.last);
         root.state.print();
     }
     println!("{}", match root.state.winner{
@@ -42,7 +47,7 @@ impl Node<Board2d, [[Space; 5]; 5]> {
             let mut new_node = Node {
                 state: child.0,
                 children: vec![],
-                map: HashMap::new()
+                map: HashMap::with_capacity(100000000)
             };
             new_node.make_children();
             new_node
@@ -54,6 +59,7 @@ impl Node<Board2d, [[Space; 5]; 5]> {
         for mut child in &mut self.children{
             child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth, &mut self.map);
         }
+        self.children.shuffle(&mut thread_rng());
         self.children.sort_unstable_by_key(|a| a.1);
     }
 
@@ -70,7 +76,7 @@ impl Node<Board2d, [[Space; 5]; 5]> {
         let mut result = Node {
             state: Board2d::new(size),
             children: vec![],
-            map: HashMap::new()
+            map: HashMap::with_capacity(100000000)
         };
         result.make_children();
         result
@@ -119,7 +125,7 @@ impl Board2d {
     fn print(&self) {
         let mut out = String::new();
         out.push('+');
-        for _n in 0..self.size {
+        for _n in 0..self.size *2 -1 {
             out.push('-');
         }
         out.push_str("+\n");
@@ -131,14 +137,14 @@ impl Board2d {
                     Space::O => out.push('O'),
                     _ => out.push(' '),
                 }
+                out.push_str("|")
             }
-            out.push_str("|\n");
+            out.push_str("\n+");
+            for _n in 0..self.size *2 -1 {
+                out.push('-');
+            }
+            out.push_str("+\n");
         }
-        out.push('+');
-        for _n in 0..self.size {
-            out.push('-');
-        }
-        out.push_str("+\n");
         print!("{}", out);
     }
     fn negamax(&self, mut alpha: i32, beta: i32, depth: u8, map:&mut HashMap<[[Space; 5]; 5], i32>)
@@ -162,7 +168,11 @@ impl Board2d {
                             if self.board[x][y] == Space::Blank {
                                 value = max(
                                     value,
-                                    -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1, map)
+                                    {
+                                        let mut child = self.new_child((x, y));
+                                        child.minimize_symmetry();
+                                        -child.negamax(-beta, -alpha, depth - 1, map)
+                                    }
                                 );
                                 alpha = max(alpha, value);
                                 if alpha >= beta {
@@ -189,6 +199,50 @@ impl Board2d {
             size,
             winner: WinState::None,
         }
+    }
+    fn minimize_symmetry(&mut self){
+        let mut all_symmetries = vec![self.clone()];
+        let rotate = |state:&Board2d| {
+            let mut next_rotation = Board2d{
+                size: state.size,
+                winner: state.winner,
+                board: [[Space::Blank; 5]; 5],
+                last: match state.last{
+                    None => None,
+                    Some((x,y))=> Some((y,state.size-x-1))
+                }
+            };
+            for y in 0..state.size{
+                for x in 0..state.size{
+                    next_rotation.board[y][state.size -x -1] = state.board[x][y];
+                }
+            }
+            next_rotation
+        };
+        let mirror = |state:&Board2d| {
+            let mut mirror = Board2d{
+                size: state.size,
+                winner: state.winner,
+                board: [[Space::Blank; 5]; 5],
+                last: match state.last{
+                    None => None,
+                    Some((x,y)) => Some((state.size -x -1, y))
+                }
+            };
+            for y in 0..state.size{
+                for x in 0..state.size{
+                    mirror.board[state.size -x -1][y] = state.board[x][y];
+                }
+            }
+            mirror
+        };
+        all_symmetries.push(rotate(all_symmetries.last().unwrap()));
+        all_symmetries.push(rotate(all_symmetries.last().unwrap()));
+        all_symmetries.push(rotate(all_symmetries.last().unwrap()));
+        all_symmetries.push(mirror(all_symmetries.last().unwrap()));
+        all_symmetries.push(rotate(all_symmetries.last().unwrap()));
+        all_symmetries.push(rotate(all_symmetries.last().unwrap()));
+        all_symmetries.push(rotate(all_symmetries.last().unwrap()));
     }
     fn new_child(&self, pos: (usize, usize)) -> Board2d {
         let mark = match self.last {
