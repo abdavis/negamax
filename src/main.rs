@@ -47,7 +47,7 @@ impl Node<Board2d> {
             let mut new_node = Node {
                 state: child.0,
                 children: vec![],
-                map: HashMap::with_capacity(10000000),
+                map: HashMap::new(),
                 iteration_id: self.iteration_id + 1
             };
             new_node.make_children();
@@ -77,7 +77,7 @@ impl Node<Board2d> {
         let mut result = Node {
             state: Board2d::new(size),
             children: vec![],
-            map: HashMap::with_capacity(10000000),
+            map: HashMap::new(),
             iteration_id: 0
         };
         result.make_children();
@@ -164,7 +164,9 @@ impl Board2d {
         // Check if we have already done the work for this node
         match map.get(&self.binary) {
             Some(heuristic) => {
-                if heuristic.searched_depth >= depth && heuristic.solved { return heuristic.score}
+                if heuristic.iteration_id == iter_id || (heuristic.searched_depth > depth && heuristic.solved){
+                        return heuristic.score
+                    }
             }
             None => ()
         }
@@ -183,9 +185,7 @@ impl Board2d {
                             if self.board[x][y] == Space::Blank {
                                 value = max(
                                     value,
-                                    {
-                                        -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1, map, &iter_id)
-                                    }
+                                    -self.new_child((x, y)).negamax(-beta, -alpha, depth - 1, map, &iter_id)
                                 );
                                 alpha = max(alpha, value);
                                 if alpha >= beta {
