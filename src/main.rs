@@ -47,8 +47,8 @@ impl Node<Board2d> {
             let mut new_node = Node {
                 state: child.0,
                 children: vec![],
-                map: HashMap::new(),
-                iteration_id: self.iteration_id + 1
+                map: self.map,
+                iteration_id: self.iteration_id
             };
             new_node.make_children();
             new_node
@@ -57,11 +57,18 @@ impl Node<Board2d> {
         }
     }
     fn calc_scores(&mut self, depth: u8) {
+        self.iteration_id += 1;
         for mut child in &mut self.children{
             child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth, &mut self.map, &self.iteration_id);
         }
         self.children.shuffle(&mut thread_rng());
         self.children.sort_unstable_by_key(|a| a.1);
+        self.clean_transposition_map();
+    }
+
+    fn clean_transposition_map(&mut self){
+        let temp_id = self.iteration_id;
+        self.map.retain(|_k, heuristic| heuristic.iteration_id == temp_id);
     }
 
     fn print_scores(&self) {
@@ -162,9 +169,10 @@ impl Board2d {
     fn negamax(&self, mut alpha: i32, beta: i32, depth: u8, map:&mut HashMap<u64, MapHeuristics>, &iter_id:&u8)
     -> i32 {
         // Check if we have already done the work for this node
-        match map.get(&self.binary) {
+        match map.get_mut(&self.binary) {
             Some(heuristic) => {
                 if heuristic.searched_depth >= depth && (heuristic.solved || heuristic.score >= beta) {
+                        heuristic.iteration_id = iter_id;
                         return heuristic.score
                     }
             }
