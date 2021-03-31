@@ -164,7 +164,7 @@ impl Board2d {
         // Check if we have already done the work for this node
         match map.get(&self.binary) {
             Some(heuristic) => {
-                if heuristic.iteration_id == iter_id || (heuristic.searched_depth > depth && heuristic.solved){
+                if heuristic.searched_depth >= depth && (heuristic.solved || heuristic.score >= beta) {
                         return heuristic.score
                     }
             }
@@ -172,7 +172,7 @@ impl Board2d {
         }
         match self.winner{
             // Base cases for recursion
-            WinState::X | WinState::O => -100 + i32::from(depth),
+            WinState::X | WinState::O => -1000 - i32::from(depth),
             WinState::Draw => 0,
             WinState::None =>{
                 if depth == 0 { 0 }
