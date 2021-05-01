@@ -1,5 +1,5 @@
 //use std::io
-use std::cmp::{max};
+use std::cmp::{max, min};
 use std::i32::{MAX, MIN};
 use std::time::{Instant};
 use std::collections::HashMap;
@@ -9,10 +9,10 @@ use rand::thread_rng;
 
 fn main() {
     let start = Instant::now();
-    let mut root = Node::new2d(4);
+    let mut root = Node::new2d(5);
     while match root.state.winner{ WinState::None => true, _ => false}{
         let start = Instant::now();
-        root.calc_scores(17);
+        root.calc_scores(13);
         let time = start.elapsed();
         root.print_scores();
         println!("{:?}", time);
@@ -37,7 +37,8 @@ struct Node<T> {
     state: T,
     children: Vec<(T, i32)>,
     map: HashMap<u64, MapHeuristics>,
-    iteration_id: u8
+    iteration_id: u8,
+    max_depth: u8
 }
 
 impl Node<Board2d> {
@@ -48,7 +49,8 @@ impl Node<Board2d> {
                 state: child.0,
                 children: vec![],
                 map: self.map,
-                iteration_id: self.iteration_id
+                iteration_id: self.iteration_id,
+                max_depth: self.max_depth - 1
             };
             new_node.make_children();
             new_node
@@ -59,7 +61,7 @@ impl Node<Board2d> {
     fn calc_scores(&mut self, depth: u8) {
         self.iteration_id += 1;
         for mut child in &mut self.children{
-            child.1 = -child.0.negamax(MIN + 1, MAX - 1, depth, &mut self.map, &self.iteration_id);
+            child.1 = -child.0.negamax(MIN + 1, MAX - 1, min(depth, self.max_depth), &mut self.map, &self.iteration_id);
         }
         self.children.shuffle(&mut thread_rng());
         self.children.sort_unstable_by_key(|a| a.1);
@@ -68,7 +70,7 @@ impl Node<Board2d> {
 
     fn clean_transposition_map(&mut self){
         let temp_id = self.iteration_id;
-        self.map.retain(|_k, heuristic| heuristic.iteration_id == temp_id);
+        self.map.retain(|_k, heuristic| heuristic.iteration_id >= temp_id);
     }
 
     fn print_scores(&self) {
@@ -85,7 +87,8 @@ impl Node<Board2d> {
             state: Board2d::new(size),
             children: vec![],
             map: HashMap::new(),
-            iteration_id: 0
+            iteration_id: 0,
+            max_depth: u8::pow(size as u8, 2)
         };
         result.make_children();
         result
@@ -119,7 +122,8 @@ impl Node<Board3d> {
             state: Board3d::new(size),
             children: vec![],
             map: HashMap::new(),
-            iteration_id: 0
+            iteration_id: 0,
+            max_depth: u8::pow(size as u8, 3)
         }
     }
 }
@@ -137,7 +141,7 @@ struct Board2d {
     last: Option<(usize, usize)>,
     size: usize,
     winner: WinState,
-    binary: u64
+    binaries: [u64; 5]
 }
 impl Board2d {
     fn print(&self) {
@@ -164,12 +168,11 @@ impl Board2d {
             out.push_str("+\n");
         }
         print!("{}", out);
-        println!("{:b}", self.binary);
     }
     fn negamax(&self, mut alpha: i32, beta: i32, depth: u8, map:&mut HashMap<u64, MapHeuristics>, &iter_id:&u8)
     -> i32 {
         // Check if we have already done the work for this node
-        match map.get_mut(&self.binary) {
+        match map.get_mut(&self.binaries.iter().min().unwrap()) {
             Some(heuristic) => {
                 if heuristic.searched_depth >= depth && (heuristic.solved || heuristic.score >= beta) {
                         heuristic.iteration_id = iter_id;
@@ -207,7 +210,7 @@ impl Board2d {
                     if value == MIN {
                         value=0;
                     }
-                    map.insert(self.binary, MapHeuristics{
+                    map.insert(*self.binaries.iter().min().unwrap(), MapHeuristics{
                         searched_depth: depth,
                         score: value,
                         solved: solved,
@@ -225,7 +228,7 @@ impl Board2d {
             last: None,
             size,
             winner: WinState::None,
-            binary: 0
+            binaries: [0; 5]
         }
     }
     fn new_child(&self, pos: (usize, usize)) -> Board2d {
@@ -243,10 +246,21 @@ impl Board2d {
             board: self.board,
             size: self.size,
             winner: WinState::None,
-            binary: self.binary | (
-                match mark{Space::X => 0b01, Space::O => 0b10, _=> panic!()}
-                << ((pos.1 * self.size + pos.0) * 2)
-            )
+            // binary: self.binary | (
+            //     match mark{Space::X => 0b01, Space::O => 0b10, _=> panic!()}
+            //     << ((pos.1 * self.size + pos.0) * 2)
+            // )
+            binaries: {
+                let mark_bin = match mark{Space::X => 0b01, Space::O => 0b10, _=> panic!()};
+                let (x, y) = pos;
+                [
+                    self.binaries[0] | (mark_bin << ((x* self.size + y) * 2)), //identity
+                    self.binaries[1] | (mark_bin << ((y * self.size + x) * 2)), //mirror diag top left to bottom right
+                    self.binaries[2] | (mark_bin << (((self.size - 1 - y) * self.size + (self.size - 1 - x)) * 2)), //mirror diag bottom left to top right
+                    self.binaries[3] | (mark_bin << (((self.size - 1 - x)* self.size + y) * 2)), //mirror x
+                    self.binaries[4] | (mark_bin << ((x * self.size + (self.size - 1 - y))* 2)) //mirror y
+                ]
+            }
         };
         result.board[pos.0][pos.1] = mark;
         result.check_win();
